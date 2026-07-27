@@ -60,6 +60,7 @@ gets fixed, delete the entry. A stale warning is worse than no warning.
 | [.claude/skills/screening-assessments/](.claude/skills/screening-assessments/) | Screening App | Assessment volume, recruiter pass rates, channel and sourcer performance, anti-cheat |
 | [.claude/skills/video-interview/](.claude/skills/video-interview/) | Screening App (video) | AI-scored spoken interviews, AI pass/fail recommendations, AI-vs-human calibration |
 | [.claude/skills/helm-ops/](.claude/skills/helm-ops/) | HELM Ops "Signal" | Recruiting funnel, hires, open roles, time to placement, staffing forecast |
+| [.claude/skills/cpa/](.claude/skills/cpa/) | Meta × Airtable (cross-system) | True cost per acquisition — Meta spend joined to confirmed orders. Cost per order/placement, ROAS when data allows |
 
 The master skill orders sections by the funnel — Meta Ads → Forms → Inventory → Screening →
 Video Interview → HELM Ops — so a full report reads top to bottom as money in, people out.

@@ -32,8 +32,8 @@ Three rules that override everything else below:
 
 ## The catalog
 
-Six systems. Each has its own skill under `.claude/skills/`, its own API and env vars, and emits its own
-`### <System>` block.
+Six reporting systems, each with its own skill under `.claude/skills/`, its own API and env vars,
+emitting its own `### <System>` block — plus one cross-system skill (**CPA**) that joins two of them.
 
 | System | Skill | Covers | Reach for it when Josh asks about |
 |---|---|---|---|
@@ -43,6 +43,12 @@ Six systems. Each has its own skill under `.claude/skills/`, its own API and env
 | **Screening App (Assessments)** | `.claude/skills/screening-assessments/` | Intelligence / Big Five / verbal / writing assessments, recruiter pass-fail, channel and sourcer performance, anti-cheat | screening throughput, pass rates, which channel or sourcer converts, review backlog |
 | **Video Interview** | `.claude/skills/video-interview/` | Writing task + Big Five + **AI-scored spoken interview**, AI pass/fail recommendations, AI-vs-reviewer calibration, anti-cheat | video/spoken interviews, AI scoring, is the AI trustworthy, who's waiting on a decision |
 | **HELM Ops (Signal)** | `.claude/skills/helm-ops/` | Airtable recruiting funnel: screenings, candidate flow and hires, supply/demand spend, open-role pipeline, time-to-placement, staffing forecast | hires, open roles, roles slipping, time to placement, how many sourcers we need |
+| **CPA** (cross-system) | `.claude/skills/cpa/` | True cost per acquisition: Meta spend joined to confirmed orders in Airtable. Cost per order, cost per placement, lead→order conversion, ROAS when data allows | CPA, CAC, cost per client/order, "are the ads profitable", return on ad spend, ROAS |
+
+**CPA is different from the other six.** It calls no single reporting API — it runs a deterministic
+script that joins Meta Ads spend to Airtable orders. It is an **all-time** metric (the order side
+can't be reliably date-windowed — see its skill and MEMORY.md), so it does **not** join the weekly
+report. Route to it only for CPA/CAC/cost-per-order/ROAS questions.
 
 ### The two screening systems — read this before routing
 
@@ -67,6 +73,7 @@ Work out the window first (below), then the systems.
 | A named system ("how's Meta looking", "how's the inventory") | Just that one |
 | "how's screening looking" | Both screening systems |
 | A topic that maps to one system via the catalog table | Just that one |
+| "what's my CPA", "cost per order/client", "are the ads profitable", "ROAS" | **CPA only** — never bundled into a weekly report |
 | A topic two systems both touch (e.g. "cost per candidate" — Meta Ads and HELM Ops both have a version) | Both, and say which number came from which system |
 | Something no system covers | Say so plainly. Do not stretch a system to cover it. |
 
@@ -132,6 +139,12 @@ Order the sections by the funnel, so the report reads top to bottom as money in 
 4. `### Screening App (Assessments)` — who got screened
 5. `### Video Interview` — who got interviewed
 6. `### HELM Ops (Signal)` — who got hired, and what's still open
+
+The **CPA** section is not in this list on purpose: it's an all-time cross-system metric, not a
+weekly funnel stage, so it never appears in a "give me the report" bundle. If Josh asks for CPA
+alongside the weekly report, add its `### CPA` block at the very end, after HELM Ops, as a clearly
+separate all-time figure — and keep its `(basis: all-time, …)` footer, which correctly differs from
+the others' `(data window: …)`.
 
 Paste each system's block **verbatim** — bullets and footer exactly as the sub-skill produced them.
 The only edits permitted:

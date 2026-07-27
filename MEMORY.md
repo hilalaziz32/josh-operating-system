@@ -48,6 +48,11 @@ Baseline computed 2026-07-13 (all-time, Jan–Jul 2026): $26,291.59 spend ÷ 20 
 **$1,314.58 per order**. Only 4 of those 20 roles reached `Placed`, so cost per *placement* was
 **$6,572.90**. Recompute rather than quoting these — they age.
 
+**This is now automated.** The `cpa` skill (`.claude/skills/cpa/`) runs
+`scripts/cpa.py`, which does this join deterministically and prints the metrics as JSON. Don't
+re-derive CPA by hand — run the script. It is all-time by design (order side can't be date-windowed,
+below) and is deliberately **excluded from the weekly report bundle**.
+
 ---
 
 ## Field semantics (Airtable base `helm ops` / `appi3l0FPeo2KoRRI`)
@@ -66,11 +71,14 @@ Baseline computed 2026-07-13 (all-time, Jan–Jul 2026): $26,291.59 spend ÷ 20 
 
 Each one makes some number softer than it looks. Flag them in reports; don't silently paper over them.
 
-1. **No Meta CAPI.** `Leads.fbclid`, `fbc`, `fbp` and `CAPI Sent` exist but are **empty on all rows**.
-   So Meta attribution rests on the hand-set `Source` label. Wiring up CAPI would turn CPA from an
-   estimate into a fact. This is the single highest-leverage data fix in the stack.
-2. **`Deal Value` is empty on every ordered lead.** So we can compute what an order *costs* but never
-   what it's *worth*. No ROAS, no payback, no answer to "are the ads profitable".
+1. **Meta CAPI is mostly absent.** `Leads.fbclid`, `fbc`, `fbp`, `CAPI Sent` were empty on all rows
+   as of 2026-07-13; by 2026-07-14 a few newer leads carry a click id, so the field is *starting* to
+   populate but is far from complete. Meta attribution still rests on the hand-set `Source` label.
+   Fully wiring CAPI would turn CPA from an estimate into a fact — still the highest-leverage fix.
+2. **`Deal Value` is empty on every *ordered* lead.** The field is now populated on some leads, but
+   as of 2026-07-14 **zero of the 16 Meta leads that actually ordered** carry a value — so ROAS is
+   still uncomputable. `cpa.py` detects this (`revenue.order_revenue == 0`, `deal_value_partial`) and
+   refuses to print a fake ROAS. We can say what an order costs, not yet what it's worth.
 3. **`Order Confirmed?` is ticked on zero rows.** Dead field. Ignore it.
 4. **`Ordered` vs the Roles link disagree**: 21 Meta leads ticked `Ordered`, but only 16 have a role.
 5. **12 of 38 Roles have no `Lead` link at all** — unattributed orders. If any are Meta's, real CPA is
