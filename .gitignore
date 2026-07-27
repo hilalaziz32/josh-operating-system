@@ -1,0 +1,31 @@
+# === Secrets — NEVER commit ===
+# Live reporting keys and the Airtable token live in .env. The only env file that
+# belongs in git is the placeholder template, .env.example.
+.env
+.env.*
+!.env.example
+
+# Anything that looks like a raw credential, as defense in depth.
+*.key
+*.pem
+*.pfx
+secrets.json
+credentials.json
+
+# === Scratch / temp ===
+scratchpad/
+tmp/
+*.tmp
+*.log
+
+# === OS / editor cruft ===
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
+*~
+
+# === Node (in case a helper script ever pulls deps) ===
+node_modules/

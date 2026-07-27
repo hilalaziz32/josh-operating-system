@@ -1,0 +1,10 @@
+# Normalize text files to LF in the repo. Prevents CRLF from Windows checkouts
+# leaking into git and breaking shell scripts on Linux/macOS.
+* text=auto eol=lf
+
+# Shell scripts MUST stay LF — a CRLF here breaks the shebang on Unix.
+*.sh text eol=lf
+
+# Markdown and env template: LF.
+*.md text eol=lf
+.env.example text eol=lf
