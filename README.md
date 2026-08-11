@@ -59,6 +59,7 @@ gets fixed, delete the entry. A stale warning is worse than no warning.
 | [.claude/skills/candidate-inventory/](.claude/skills/candidate-inventory/) | Candidate Inventory | Offshore candidate supply, intake trend, country and skill concentration, ingest failures |
 | [.claude/skills/screening-assessments/](.claude/skills/screening-assessments/) | Screening App | Assessment volume, recruiter pass rates, channel and sourcer performance, anti-cheat |
 | [.claude/skills/video-interview/](.claude/skills/video-interview/) | Screening App (video) | AI-scored spoken interviews, AI pass/fail recommendations, AI-vs-human calibration |
+| [.claude/skills/candidate-assessment/](.claude/skills/candidate-assessment/) | Candidate Assessment | Proctored 30-min job simulation, AI-scored rubric, competency breakdown, funnel drop-off, reviewer-vs-AI overrides |
 | [.claude/skills/helm-ops/](.claude/skills/helm-ops/) | HELM Ops "Signal" | Recruiting funnel, hires, open roles, time to placement, staffing forecast |
 | [.claude/skills/cpa/](.claude/skills/cpa/) | Meta × Airtable (cross-system) | True cost per acquisition — Meta spend joined to confirmed orders. Cost per order/placement, ROAS when data allows |
 
@@ -103,6 +104,7 @@ ever printed.
 | Candidate Inventory | `CANDIDATE_INVENTORY_API_URL`, `CANDIDATE_INVENTORY_API_KEY` |
 | Screening App (Assessments) | `SCREENING_API_BASE_URL`, `SCREENING_API_KEY` |
 | Video Interview | `SCREENING_APP_URL`, `SCREENING_APP_API_KEY` |
+| Candidate Assessment | `ASSESSMENT_REPORTING_URL`, `ASSESSMENT_REPORTING_KEY` |
 | HELM Ops (Signal) | `HELM_OPS_BASE_URL`, `HELM_OPS_API_KEY` |
 | Airtable (for cross-system CPA / order joins) | `AIRTABLE_API_KEY`, `AIRTABLE_BASE_ID` |
 

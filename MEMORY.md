@@ -93,6 +93,11 @@ Each one makes some number softer than it looks. Flag them in reports; don't sil
    43-job catalog, so role demand is unreportable. Root cause looks like the legacy
    `remote-healthcare-roles` form (no job field) still taking all traffic, while
    `healthcare-application` (the one *with* a role picker) gets zero.
+10. **Candidate Assessment: unauthenticated PII in the source repo.** Reported by the skill's author,
+    not yet fixed: `app/api/media/[...key]/route.ts:39` gates only `recordings/` behind auth, so
+    per-question candidate answer videos under `responses/` are served **without a session check** — a
+    live PII leak. It's in that app's repo, not this one, so it can't be fixed here. Flag it; don't
+    treat it as closed until someone confirms the fix.
 
 **Rule when two systems disagree: report both, name the source of each, never average them.** The gap
 is usually the finding.
@@ -107,6 +112,28 @@ is usually the finding.
   AI-scored spoken interview, calibration). The master skill relabels them on merge. Tell them apart
   by *routes*, never by name: `/channels` + `/sourcers` = assessments; `/stats` + `/calibration` =
   video interview.
+- **There are now THREE assessment-family systems, not two.** Added `candidate-assessment`
+  (assesment.coordinators.pro — a proctored 30-min job simulation, AI-scored). It emits its own
+  `### Candidate Assessment` heading, so unlike the two `### Screening App` skills it needs **no**
+  relabelling. Route by substance: proctored / job simulation / rubric competency → Candidate
+  Assessment; spoken interview / calibration → Video Interview; channels / sourcers / recruiter
+  pass-fail → Screening App (Assessments).
+- **Candidate Assessment was not deployed to production as of 2026-08-12.** Its endpoints
+  (`assesment.coordinators.pro/api/v1/reporting/*`) return `- data unavailable` until the app is
+  deployed and `REPORTING_API_KEY` is set on its Vercel project. A blank section for it is expected,
+  not a bug, until then.
+- **Candidate Assessment — four reading rules (from its own skill):**
+  1. **Two pass lines disagree.** Platform "Fit" is 7.0/10; the customer rubric "Pass" is 40/50 =
+     8.0/10. A candidate can be Fit *and* Borderline. Report Fit rate by default; never merge them
+     into one "pass rate".
+  2. **Pending criteria are a floor, not a verdict.** ~9 of 50 rubric points can only be scored by a
+     human watching the screen recording and count as zero until then. Quote averages alongside the
+     pending count.
+  3. **The AI grader has never been validated** against real candidate data — `/ai-vs-reviewer` (how
+     often reviewers override it) is the only evidence. A large mean gap means don't trust AI scores
+     alone.
+  4. **"Opened" ≠ "applied".** The funnel starts when an invited candidate opens their private link,
+     so opened→started drop-off is invitees who never began.
 - **Meta ad account was disabled on 2026-07-02** (`account_status: 2`, `is_active: false`). Spend went
   to $0 and the whole funnel below it went quiet. **Re-check this before reading any zero as a
   business result** — a zero in Forms, Inventory or HELM may just be this.

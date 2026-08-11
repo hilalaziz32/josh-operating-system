@@ -1,6 +1,6 @@
 ---
 name: coordinators-reporting
-description: The Coordinators' reporting playbook — routes a plain-language question to the right system(s) and merges their answers into one report. Use for any ask that spans systems ("give me this week's report", "how are we doing", "full picture", "what needs my attention") or when it isn't obvious which system owns the answer. Covers Meta ads, the forms platform, candidate inventory, screening assessments, AI video interviews, and HELM Ops. Single-system asks ("how's Meta looking") route straight through to that one system.
+description: The Coordinators' reporting playbook — routes a plain-language question to the right system(s) and merges their answers into one report. Use for any ask that spans systems ("give me this week's report", "how are we doing", "full picture", "what needs my attention") or when it isn't obvious which system owns the answer. Covers Meta ads, the forms platform, candidate inventory, screening assessments, AI video interviews, the proctored candidate assessment, HELM Ops, and cross-system CPA. Single-system asks ("how's Meta looking") route straight through to that one system.
 ---
 
 # The Coordinators — reporting playbook
@@ -32,7 +32,7 @@ Three rules that override everything else below:
 
 ## The catalog
 
-Six reporting systems, each with its own skill under `.claude/skills/`, its own API and env vars,
+Seven reporting systems, each with its own skill under `.claude/skills/`, its own API and env vars,
 emitting its own `### <System>` block — plus one cross-system skill (**CPA**) that joins two of them.
 
 | System | Skill | Covers | Reach for it when Josh asks about |
@@ -42,25 +42,38 @@ emitting its own `### <System>` block — plus one cross-system skill (**CPA**) 
 | **Candidate Inventory** | `.claude/skills/candidate-inventory/` | Offshore remote-only healthcare candidate supply, intake volume/trend, country and skill concentration, RecruiterFlow stages, ingest failures | candidate supply, the bench, sourcing volume, where candidates come from, ingest failures |
 | **Screening App (Assessments)** | `.claude/skills/screening-assessments/` | Intelligence / Big Five / verbal / writing assessments, recruiter pass-fail, channel and sourcer performance, anti-cheat | screening throughput, pass rates, which channel or sourcer converts, review backlog |
 | **Video Interview** | `.claude/skills/video-interview/` | Writing task + Big Five + **AI-scored spoken interview**, AI pass/fail recommendations, AI-vs-reviewer calibration, anti-cheat | video/spoken interviews, AI scoring, is the AI trustworthy, who's waiting on a decision |
+| **Candidate Assessment** | `.claude/skills/candidate-assessment/` | **Proctored 30-min job simulation** (webcam/screen/mock patient call), AI-scored against a rubric, competency breakdown, funnel drop-off, reviewer-vs-AI overrides, review backlog | proctored assessment, job simulation, competency/rubric scores, weakest competency, awaiting review, is the AI grader trustworthy |
 | **HELM Ops (Signal)** | `.claude/skills/helm-ops/` | Airtable recruiting funnel: screenings, candidate flow and hires, supply/demand spend, open-role pipeline, time-to-placement, staffing forecast | hires, open roles, roles slipping, time to placement, how many sourcers we need |
 | **CPA** (cross-system) | `.claude/skills/cpa/` | True cost per acquisition: Meta spend joined to confirmed orders in Airtable. Cost per order, cost per placement, lead→order conversion, ROAS when data allows | CPA, CAC, cost per client/order, "are the ads profitable", return on ad spend, ROAS |
 
-**CPA is different from the other six.** It calls no single reporting API — it runs a deterministic
+**CPA is different from the other seven.** It calls no single reporting API — it runs a deterministic
 script that joins Meta Ads spend to Airtable orders. It is an **all-time** metric (the order side
 can't be reliably date-windowed — see its skill and MEMORY.md), so it does **not** join the weekly
 report. Route to it only for CPA/CAC/cost-per-order/ROAS questions.
 
-### The two screening systems — read this before routing
+### The assessment family — three systems, read this before routing
 
-`.claude/skills/screening-assessments/` and `.claude/skills/video-interview/` are **different systems on different
-deployments**, but both ship with `name: screening-app-reporting` in their frontmatter and both
-emit a `### Screening App` heading. That is a known collision in the source repos.
+Three different systems all sit in the "screening/assessment" space, on three different deployments:
 
-- Route on **substance, not the word "screening"**: AI scoring, spoken interview, calibration, or
-  "is the AI any good" → Video Interview. Channels, sourcers, recruiter pass-fail, intelligence or
-  verbal scores → Screening App (Assessments).
-- A bare **"how's screening looking"** is ambiguous, so **run both** and present both blocks.
-- **Relabel on merge** (see [Merging](#merging-the-report)). Never edit the sub-skill files.
+- **Screening App (Assessments)** — intelligence / Big Five / verbal / writing tests, recruiter
+  pass-fail, channel and sourcer performance.
+- **Video Interview** — AI-scored spoken interview, AI-vs-reviewer calibration.
+- **Candidate Assessment** — a proctored 30-min job simulation (webcam/screen/mock patient call),
+  AI-scored against a competency rubric.
+
+Two traps:
+
+1. **The first two share a heading.** Both ship with `name: screening-app-reporting` and emit a
+   `### Screening App` heading — a known collision in the source repos. **Candidate Assessment does
+   not** collide: it has its own `name` and emits `### Candidate Assessment`. So only the first two
+   need relabelling on merge (see [Merging](#merging-the-report)). Never edit the sub-skill files.
+2. **Route on substance, not the word "screening".** AI spoken interview / calibration → Video
+   Interview. Channels / sourcers / recruiter pass-fail / intelligence / verbal → Screening App
+   (Assessments). Proctored job simulation / rubric competencies / weakest competency / AI grader
+   overrides → Candidate Assessment.
+
+A bare **"how's screening looking"** now spans all three — run all three and present each block. If
+Josh names the flavour ("the proctored assessment", "the video interviews"), run just that one.
 
 ## Routing
 
@@ -68,10 +81,11 @@ Work out the window first (below), then the systems.
 
 | Ask | Systems |
 |---|---|
-| "this week's report", "how are we doing", "the full picture", "weekly report", "state of the business" | **All six** |
-| "what needs my attention", "anything on fire" | **All six**, but keep only the bullets that name a backlog, a failure, a slipping role, a rising cost, or an alert |
+| "this week's report", "how are we doing", "the full picture", "weekly report", "state of the business" | **All seven** |
+| "what needs my attention", "anything on fire" | **All seven**, but keep only the bullets that name a backlog, a failure, a slipping role, a rising cost, or an alert |
 | A named system ("how's Meta looking", "how's the inventory") | Just that one |
-| "how's screening looking" | Both screening systems |
+| "how's screening looking" | All three assessment-family systems (Screening App, Video Interview, Candidate Assessment) |
+| "how's the proctored assessment / job simulation looking" | Candidate Assessment only |
 | A topic that maps to one system via the catalog table | Just that one |
 | "what's my CPA", "cost per order/client", "are the ads profitable", "ROAS" | **CPA only** — never bundled into a weekly report |
 | A topic two systems both touch (e.g. "cost per candidate" — Meta Ads and HELM Ops both have a version) | Both, and say which number came from which system |
@@ -112,7 +126,7 @@ convenience, not a gate — a system that passes preflight can still be down, an
 say so.
 
 Then **invoke each system's skill in parallel, one subagent per system** (a single message with one
-Agent call per system). They are independent; running them in series makes Josh wait six times as
+Agent call per system). They are independent; running them in series makes Josh wait seven times as
 long for nothing.
 
 Give each subagent exactly this:
@@ -138,7 +152,8 @@ Order the sections by the funnel, so the report reads top to bottom as money in 
 3. `### Candidate Inventory` — who's on the bench
 4. `### Screening App (Assessments)` — who got screened
 5. `### Video Interview` — who got interviewed
-6. `### HELM Ops (Signal)` — who got hired, and what's still open
+6. `### Candidate Assessment` — who did the proctored job simulation
+7. `### HELM Ops (Signal)` — who got hired, and what's still open
 
 The **CPA** section is not in this list on purpose: it's an all-time cross-system metric, not a
 weekly funnel stage, so it never appears in a "give me the report" bundle. If Josh asks for CPA
@@ -213,7 +228,7 @@ its place by saying something **no single system could have told him**.
 
 ## Worked examples
 
-**"Give me this week's report"** → window: last 7 days. Preflight, then all six systems in parallel,
+**"Give me this week's report"** → window: last 7 days. Preflight, then all seven systems in parallel,
 merge in funnel order, synthesis on top.
 
 **"How's Meta looking this month?"** → window: this month. Only `.claude/skills/meta-ads/`. Return its
@@ -223,11 +238,11 @@ merge in funnel order, synthesis on top.
 parallel. Two blocks, relabeled, plus a short synthesis if they say something interesting together
 (e.g. both backlogs growing).
 
-**"What needs my attention?"** → all six, last 7 days. Merge, then keep only the bullets that name a
+**"What needs my attention?"** → all seven, last 7 days. Merge, then keep only the bullets that name a
 problem. If a system has nothing wrong, its section says so in one line rather than being dropped —
 "nothing needing attention" is information.
 
-**"Full picture for June"** → window: 2026-06-01 to 2026-06-30. All six. Note in the footer that Meta
+**"Full picture for June"** → window: 2026-06-01 to 2026-06-30. All seven. Note in the footer that Meta
 Ads alerts always describe the trailing 7 days regardless of the requested window — that's by design
 in that system, not a contradiction with the June numbers.
 
