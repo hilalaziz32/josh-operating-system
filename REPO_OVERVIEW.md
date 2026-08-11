@@ -1,7 +1,11 @@
 # The Coordinators — Reporting Playbook (Repo Overview)
 
 ## What it is
-A **Claude Code skills repo** (not application code). It turns plain-English questions from Josh Klenoff (CEO of *The Coordinators*, a healthcare-admin staffing agency) into merged, read-only business reports. There's no UI — the interface is opening Claude Code in this folder and asking a question.
+A **Claude Code skills repo** with a thin web app on top. It turns plain-English questions from Josh Klenoff (CEO of *The Coordinators*, a healthcare-admin staffing agency) into merged, read-only business reports.
+
+Two front doors, one playbook:
+- **Control Room** (`public/` + `api/`) — a Vercel app. Password-gated, no build step, no dependencies. Dashboard (live funnel across all systems), Ask (the playbook run server-side, streamed), Systems (live API probes).
+- **Claude Code** — open the folder, ask. Full skill run.
 
 ## How it works
 - Every backend system exposes a read-only `/api/v1/reporting/` API.
@@ -28,11 +32,15 @@ A **confirmed order = a Roles record whose `Lead` link is set** (not a checkbox)
 ## Important conventions
 - **MEMORY.md** is the accumulated ground-truth: field semantics (stable) and known data defects (re-check, delete when fixed). Read before producing any report.
 - **Two screening skills** are separate apps sharing a frontmatter name; the master skill relabels them on merge.
-- **Config**: each system reads its own URL + API key from `.env` (gitignored). Run `.claude/skills/master/scripts/preflight.sh` to see which are `ready` vs `MISSING`.
+- **Config**: each system reads its own URL + API key from `.env` (gitignored). `.claude/skills/master/scripts/preflight.sh` shows which are `ready` vs `MISSING` — but it only checks that env vars exist. The app's **Systems** view actually probes each API, so it can tell a missing key from a rejected one from a dead host.
 - **Privacy**: reporting only — counts/rates/trends. Skills never pass redaction-lifting flags to pull individual candidate PII.
 - **Resilience**: a down/unconfigured system reports `- data unavailable`; it never takes down the whole report.
 
 ## Files
 - `README.md`, `MEMORY.md` — docs
-- `.claude/skills/*/SKILL.md` — the seven skills
-- `.env` — live keys (gitignored)
+- `.claude/skills/*/SKILL.md` — the eight skills
+- `.env` — live keys (gitignored); on Vercel these are project environment variables
+- `lib/` — the app's shared core: `systems.js` (the catalog: env vars, auth style, window mapping, which response fields are safe to put on a tile), `upstream.js` (the only code that holds a key or calls an upstream; strips PII flags server-side), `auth.js` (signed-cookie password gate), `http.js`
+- `api/` — `session.js`, `systems.js` (live probes), `dashboard.js` (parallel KPI sweep + MEMORY.md-derived caveats), `ask.js` (Gemini function-calling loop, SSE-streamed)
+- `public/` — the client. No framework, no build step
+- `dev.js` — local server that reproduces Vercel's routing (`npm run dev`)

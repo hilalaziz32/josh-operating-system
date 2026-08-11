@@ -29,3 +29,6 @@ desktop.ini
 
 # === Node (in case a helper script ever pulls deps) ===
 node_modules/
+
+# === Web UI ===
+.vercel/

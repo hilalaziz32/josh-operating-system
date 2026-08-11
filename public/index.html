@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>The Coordinators — Control Room</title>
+<link rel="stylesheet" href="/styles.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+</head>
+<body>
+
+<!-- ------------------------------------------------------------- sign in -->
+<div id="gate" class="gate" hidden>
+  <form class="gate-card" id="gate-form">
+    <div class="gate-brand">The Coordinators</div>
+    <h1 class="gate-title">Control Room</h1>
+    <p class="gate-sub">Internal reporting. Live business data.</p>
+    <label class="field">
+      <span class="field-label">Password</span>
+      <input type="password" id="gate-password" autocomplete="current-password" required>
+    </label>
+    <button class="btn btn-primary btn-block" type="submit">Enter</button>
+    <p class="gate-error" id="gate-error" role="alert" hidden></p>
+  </form>
+</div>
+
+<!-- ----------------------------------------------------------- the shell -->
+<div id="app" class="shell" hidden>
+
+  <nav class="rail">
+    <div class="rail-brand">
+      <span class="rail-mark"></span>
+      <span class="rail-name">The Coordinators</span>
+    </div>
+
+    <div class="rail-nav">
+      <button class="rail-link is-active" data-view="dashboard">
+        <span class="rail-link-title">Dashboard</span>
+        <span class="rail-link-sub">The numbers, live</span>
+      </button>
+      <button class="rail-link" data-view="ask">
+        <span class="rail-link-title">Ask</span>
+        <span class="rail-link-sub">A question, in English</span>
+      </button>
+      <button class="rail-link" data-view="systems">
+        <span class="rail-link-title">Systems</span>
+        <span class="rail-link-sub">What's answering</span>
+      </button>
+    </div>
+
+    <div class="rail-foot">
+      <div class="rail-health" id="rail-health">
+        <span class="dot dot-muted"></span><span id="rail-health-text">checking…</span>
+      </div>
+      <button class="btn btn-ghost btn-small" id="sign-out">Sign out</button>
+    </div>
+  </nav>
+
+  <main class="main">
+
+    <!-- ------------------------------------------------------ dashboard -->
+    <section class="view is-active" data-view="dashboard">
+      <header class="view-head">
+        <div>
+          <h1 class="view-title">Dashboard</h1>
+          <p class="view-sub" id="dash-sub">Money in at the top, people out at the bottom.</p>
+        </div>
+        <div class="view-actions">
+          <div class="segmented" id="window-picker" role="group" aria-label="Date window"></div>
+          <button class="btn btn-ghost btn-small" id="dash-refresh">Refresh</button>
+        </div>
+      </header>
+
+      <div id="dash-body">
+        <div class="loading">Loading the funnel…</div>
+      </div>
+    </section>
+
+    <!-- ------------------------------------------------------------ ask -->
+    <section class="view" data-view="ask">
+      <header class="view-head">
+        <div>
+          <h1 class="view-title">Ask</h1>
+          <p class="view-sub">Ask the question you were going to ask anyway. It works out which systems can answer.</p>
+        </div>
+      </header>
+
+      <div class="ask-wrap">
+        <div class="chips" id="ask-chips"></div>
+
+        <form class="ask-form" id="ask-form">
+          <textarea id="ask-input" rows="2" placeholder="e.g. What needs my attention this week?" autocomplete="off"></textarea>
+          <div class="ask-controls">
+            <div class="segmented" id="ask-window" role="group" aria-label="Date window"></div>
+            <button class="btn btn-primary" type="submit" id="ask-submit">Run</button>
+          </div>
+        </form>
+
+        <div id="ask-unavailable" class="callout callout-warn" hidden>
+          <strong>The Ask console is switched off.</strong>
+          <span>No <code>GEMINI_API_KEY</code> is set on this deployment. The Dashboard and Systems views work without it.</span>
+        </div>
+
+        <div class="ask-activity" id="ask-activity" hidden></div>
+        <article class="report" id="ask-report" hidden></article>
+        <div class="ask-footer" id="ask-footer" hidden>
+          <button class="btn btn-ghost btn-small" id="ask-copy">Copy report</button>
+          <button class="btn btn-ghost btn-small" id="ask-download">Download .md</button>
+          <span class="ask-meta" id="ask-meta"></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- -------------------------------------------------------- systems -->
+    <section class="view" data-view="systems">
+      <header class="view-head">
+        <div>
+          <h1 class="view-title">Systems</h1>
+          <p class="view-sub">A live probe of every reporting API — not just a check that a key exists.</p>
+        </div>
+        <div class="view-actions">
+          <button class="btn btn-ghost btn-small" id="systems-refresh">Re-check all</button>
+        </div>
+      </header>
+
+      <div id="systems-body">
+        <div class="loading">Probing…</div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script type="module" src="/app.js"></script>
+</body>
+</html>

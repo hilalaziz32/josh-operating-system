@@ -1,0 +1,14 @@
+{
+  "name": "coordinators-control-room",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Web front door to The Coordinators' reporting playbook.",
+  "type": "module",
+  "scripts": {
+    "dev": "node dev.js",
+    "start": "node dev.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

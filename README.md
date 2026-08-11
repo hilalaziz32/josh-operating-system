@@ -1,15 +1,61 @@
 # The Coordinators — reporting playbook
 
 Josh asks a question in plain English. Claude works out which systems can answer it, asks each one,
-and hands back a single report. No dashboards, no logins, no "which tab was that in".
+and hands back a single report. No "which tab was that in".
 
 Every system in The Coordinators' stack exposes a read-only `/api/v1/reporting/` API. Each has a
 skill in this repo that knows how to call it and how to turn the response into insight. One master
 skill sits on top and does the routing and the merging.
 
+There are two front doors onto the same playbook:
+
+| | For | What it is |
+|---|---|---|
+| **[Control Room](#the-control-room-the-web-app)** | Josh | A web app on Vercel. Open a URL, see the funnel; ask a question, get the report. |
+| **Claude Code** | whoever maintains this | The terminal. Full run of the skills, plus everything else Claude Code can do. |
+
+## The Control Room (the web app)
+
+The deployed UI. Three views:
+
+- **Dashboard** — the funnel end to end, money in at the top and people out at the bottom, pulled
+  live from all eight systems in one parallel sweep. Every figure is labelled with the system that
+  reported it. Nothing is averaged, reconciled or recomputed.
+- **Ask** — the same plain-English question box as the terminal, running the playbook server-side on
+  the Gemini API. The report streams in as it's written.
+- **Systems** — a live probe of every reporting API, with what to do about anything that isn't
+  answering. This supersedes `preflight.sh`, which can only tell you a key is *present*.
+
+The dashboard also carries **caveats**: rules transcribed from [MEMORY.md](MEMORY.md) that fire
+against the live data. A $0 cost-per-lead gets flagged as meaningless rather than good; two systems
+disagreeing about screening volume get shown side by side rather than quietly averaged. When a
+MEMORY.md entry is fixed at the source, delete its rule in
+[api/dashboard.js](api/dashboard.js) along with the entry.
+
+### Deploying it
+
+```bash
+vercel                       # from the repo root — zero config, no build step, no dependencies
+```
+
+Then set the environment variables in the Vercel project: every key from `.env` (so the app can
+reach the reporting APIs), plus `APP_PASSWORD`. Until `APP_PASSWORD` is set **nobody can sign in** —
+it fails closed rather than putting live business data on an open URL. `GEMINI_API_KEY` is
+optional and switches the Ask console on; without it the other two views work unchanged.
+
+`api/ask.js` is configured for a 300-second ceiling, which needs a Vercel plan with Fluid compute.
+On Hobby the cap is 60s and a full seven-system report will be cut off — single-system questions
+still fit comfortably.
+
+### Running it locally
+
+```bash
+npm run dev                  # http://localhost:4321 — reads .env, no Vercel CLI needed
+```
+
 ## How Josh uses it
 
-Open Claude Code in this folder and ask. That's the whole interface.
+Open the Control Room and ask. Or open Claude Code in this folder and ask — same playbook.
 
 ```bash
 cd "josh - operating system"
