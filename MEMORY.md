@@ -10,7 +10,9 @@ Two kinds of entry here:
 - **Known defects** — bugs and gaps in the source data. These *should* get fixed; **re-check before
   relying on one**, and if you find it fixed, delete the entry.
 
-Last verified: **2026-07-13**.
+Last verified: **2026-08-13** — but only partly. Re-checked on that date: Meta spend still $0, the
+Screening App / HELM Ops screening disagreement, and Candidate Assessment (now live). The Airtable
+defects (1–7) were last checked 2026-07-13 and have **not** been re-verified since.
 
 ---
 
@@ -98,6 +100,9 @@ Each one makes some number softer than it looks. Flag them in reports; don't sil
     per-question candidate answer videos under `responses/` are served **without a session check** — a
     live PII leak. It's in that app's repo, not this one, so it can't be fixed here. Flag it; don't
     treat it as closed until someone confirms the fix.
+    **Escalated 2026-08-13: that app is now serving production traffic**, so this is no longer a
+    latent defect in an undeployed app — candidate answer videos are reachable without a session
+    today. Highest-priority fix in the stack.
 
 **Rule when two systems disagree: report both, name the source of each, never average them.** The gap
 is usually the finding.
@@ -118,10 +123,10 @@ is usually the finding.
   relabelling. Route by substance: proctored / job simulation / rubric competency → Candidate
   Assessment; spoken interview / calibration → Video Interview; channels / sourcers / recruiter
   pass-fail → Screening App (Assessments).
-- **Candidate Assessment was not deployed to production as of 2026-08-12.** Its endpoints
-  (`assesment.coordinators.pro/api/v1/reporting/*`) return `- data unavailable` until the app is
-  deployed and `REPORTING_API_KEY` is set on its Vercel project. A blank section for it is expected,
-  not a bug, until then.
+- **Candidate Assessment went live on 2026-08-13** and now answers normally (verified: `/summary`,
+  `/scores`, `/ai-vs-reviewer`). Before that date its reporting API returned `- data unavailable`, so
+  **any window reaching back earlier under-reports it** — a thin section for an older window is
+  history, not a fault.
 - **Candidate Assessment — four reading rules (from its own skill):**
   1. **Two pass lines disagree.** Platform "Fit" is 7.0/10; the customer rubric "Pass" is 40/50 =
      8.0/10. A candidate can be Fit *and* Borderline. Report Fit rate by default; never merge them
@@ -129,9 +134,12 @@ is usually the finding.
   2. **Pending criteria are a floor, not a verdict.** ~9 of 50 rubric points can only be scored by a
      human watching the screen recording and count as zero until then. Quote averages alongside the
      pending count.
-  3. **The AI grader has never been validated** against real candidate data — `/ai-vs-reviewer` (how
-     often reviewers override it) is the only evidence. A large mean gap means don't trust AI scores
-     alone.
+  3. **The AI grader is now validated, and it is not yet trustworthy.** First real reading
+     (2026-08-13, last 30 days): reviewers agreed with the AI on **40%** of submissions, overrode 9
+     of 15, and in 8 of those 9 revised **upward** — mean gap **7.14 points of 50**, and *widening*
+     (4.86 in the older half vs 9.13 in the newer). The AI reads harsher than humans. Never quote an
+     AI score as a verdict; quote it next to the override rate. Re-check `/ai-vs-reviewer` before
+     relying on this — a widening gap should either be explained or closed.
   4. **"Opened" ≠ "applied".** The funnel starts when an invited candidate opens their private link,
      so opened→started drop-off is invitees who never began.
 - **Meta ad account was disabled on 2026-07-02** (`account_status: 2`, `is_active: false`). Spend went

@@ -34,18 +34,31 @@ MEMORY.md entry is fixed at the source, delete its rule in
 
 ### Deploying it
 
-```bash
-vercel                       # from the repo root — zero config, no build step, no dependencies
-```
+Import the repo on Vercel and accept the defaults. There is no build step, no dependencies and
+nothing to install; `vercel.json` already pins the framework (none) and the output directory
+(`public/`), so **leave Root Directory as `./` and set no build command**.
 
-Then set the environment variables in the Vercel project: every key from `.env` (so the app can
-reach the reporting APIs), plus `APP_PASSWORD`. Until `APP_PASSWORD` is set **nobody can sign in** —
-it fails closed rather than putting live business data on an open URL. `GEMINI_API_KEY` is
-optional and switches the Ask console on; without it the other two views work unchanged.
+Then set the environment variables in the project settings, for Production, Preview and Development:
 
-`api/ask.js` is configured for a 300-second ceiling, which needs a Vercel plan with Fluid compute.
-On Hobby the cap is 60s and a full seven-system report will be cut off — single-system questions
-still fit comfortably.
+| Variable | |
+|---|---|
+| `APP_PASSWORD` | **Required.** Until it is set nobody can sign in — the app fails closed rather than putting live business data on an open URL. Use a different one from your local `.env`. |
+| the eight systems' `*_URL` / `*_KEY` pairs | Required for those systems to answer. Copy from `.env`; the table under [Configuration](#the-variables) lists them. |
+| `AIRTABLE_API_KEY`, `AIRTABLE_BASE_ID` | Required only for CPA questions. |
+| `GEMINI_API_KEY` | Optional — switches the Ask console on. Without it Dashboard and Systems work unchanged and Ask reports itself off. |
+| `GEMINI_MODEL` | Optional, defaults to `gemini-3.6-flash`. |
+| `SESSION_SECRET` | Optional; derived from `APP_PASSWORD` when unset. |
+
+`.env` itself is gitignored and never deploys — Vercel reads its own environment.
+
+**After the first deploy, open Systems.** If it reads 8 of 8 answering, everything is wired. Anything
+short of that names the exact variable it is missing.
+
+On timing: measured against the live systems, a full seven-system report takes **~30 seconds and
+about 15 tool calls**, so it fits inside Hobby's 60-second function ceiling — but with little
+headroom if an upstream is slow. `api/ask.js` requests 300 seconds, which plans with Fluid compute
+will honour and Hobby will silently clamp. If a report ever stops early the UI says so, rather than
+presenting half a report as whole.
 
 ### Running it locally
 

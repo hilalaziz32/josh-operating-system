@@ -107,6 +107,18 @@ const server = http.createServer(async (req, res) => {
 
 const count = loadEnv();
 
+// A port clash is the most common way this fails to start. Say what to do about
+// it rather than printing a stack trace.
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`\n  Port ${PORT} is already in use — the Control Room may already be running.`);
+    console.error(`  Open http://localhost:${PORT}, or start on another port:\n`);
+    console.error(`      PORT=4322 npm run dev\n`);
+    process.exit(1);
+  }
+  throw err;
+});
+
 server.listen(PORT, '127.0.0.1', () => {
   console.log(`\n  The Coordinators — Control Room`);
   console.log(`  http://localhost:${PORT}\n`);
