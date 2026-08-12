@@ -2,6 +2,8 @@
 //
 // No framework, no build step. Three views over four endpoints.
 
+import { esc, renderMarkdown } from '/markdown.js';
+
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
@@ -62,92 +64,6 @@ function deltaMarkup(delta, kind, good) {
   let cls = '';
   if (good && delta !== 0) cls = (delta > 0) === (good === 'up') ? 'is-good' : 'is-bad';
   return `<div class="tile-delta ${cls}">${arrow} ${magnitude} vs previous period</div>`;
-}
-
-const esc = (s) =>
-  String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-
-/* ------------------------------------------------------------- markdown -- */
-
-const inline = (s) =>
-  esc(s)
-    .replace(/`([^`]+)`/g, '<code>$1</code>')
-    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-    .replace(/(^|[^*\w])\*([^*\n]+)\*/g, '$1<em>$2</em>')
-    .replace(/(^|[\s(])_([^_\n]+)_/g, '$1<em>$2</em>');
-
-function renderMarkdown(src) {
-  const lines = String(src).split('\n');
-  const out = [];
-  let list = null;
-  let table = null;
-
-  const closeList = () => {
-    if (list) {
-      out.push(`<ul>${list.join('')}</ul>`);
-      list = null;
-    }
-  };
-  const closeTable = () => {
-    if (table) {
-      const [head, ...body] = table;
-      out.push(
-        `<table><thead><tr>${head.map((c) => `<th>${inline(c)}</th>`).join('')}</tr></thead>` +
-          `<tbody>${body
-            .map((row) => `<tr>${row.map((c) => `<td>${inline(c)}</td>`).join('')}</tr>`)
-            .join('')}</tbody></table>`
-      );
-      table = null;
-    }
-  };
-  const closeAll = () => {
-    closeList();
-    closeTable();
-  };
-
-  for (const raw of lines) {
-    const line = raw.replace(/\s+$/, '');
-
-    if (!line.trim()) {
-      closeAll();
-      continue;
-    }
-
-    // Table rows, with the |---|---| separator swallowed.
-    if (/^\s*\|.*\|\s*$/.test(line)) {
-      const cells = line.trim().slice(1, -1).split('|').map((c) => c.trim());
-      if (cells.every((c) => /^:?-{2,}:?$/.test(c))) continue;
-      closeList();
-      (table ||= []).push(cells);
-      continue;
-    }
-    closeTable();
-
-    const heading = line.match(/^(#{1,4})\s+(.*)$/);
-    if (heading) {
-      closeAll();
-      const level = Math.min(heading[1].length, 3);
-      out.push(`<h${level}>${inline(heading[2])}</h${level}>`);
-      continue;
-    }
-
-    if (/^\s*[-*]\s+/.test(line)) {
-      closeTable();
-      (list ||= []).push(`<li>${inline(line.replace(/^\s*[-*]\s+/, ''))}</li>`);
-      continue;
-    }
-    closeList();
-
-    if (/^\s*(---+|___+|\*\*\*+)\s*$/.test(line)) {
-      out.push('<hr>');
-      continue;
-    }
-
-    out.push(`<p>${inline(line)}</p>`);
-  }
-
-  closeAll();
-  return out.join('');
 }
 
 /* ------------------------------------------------------------- requests -- */
@@ -614,9 +530,19 @@ function boot() {
   $('#ask-form').hidden = !state.askAvailable;
   $('#ask-chips').hidden = !state.askAvailable;
 
-  showView(location.hash.slice(1));
   loadDashboard();
   loadSystems();
+
+  // A question can be carried in the URL — /?q=What+needs+my+attention — so a
+  // recurring ask can be bookmarked instead of retyped every Monday.
+  const asked = new URLSearchParams(location.search).get('q');
+  if (asked && state.askAvailable) {
+    showView('ask');
+    $('#ask-input').value = asked;
+    runAsk(asked);
+  } else {
+    showView(location.hash.slice(1));
+  }
 }
 
 (async function start() {

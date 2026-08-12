@@ -83,25 +83,45 @@ async function systemPrompt() {
     '',
     '## How to work',
     '',
-    '1. Decide which systems the question needs, using the catalog in the playbook below.',
-    '2. Call `read_playbook` for each system you are going to query — it documents that system\'s',
-    '   endpoints, its date-window params, and how to read its fields correctly. Do not guess an',
+    '1. **Route first, from the catalog in the playbook below.** That table is already in front of you —',
+    '   it says what each system covers and the words that point at it. Decide from it. Do **not** read a',
+    '   system\'s playbook to work out whether it is relevant; that is slow and Josh is waiting.',
+    '2. **Then read only the playbooks of the systems you have decided to query.** Each documents that',
+    '   system\'s endpoints, its date-window params, and how to read its fields correctly. Do not guess an',
     '   endpoint or a field name.',
     '3. Call `query_system` for the data you need. Prefer one summary call per system; drill down only',
     '   when the question actually requires it. Independent systems can be called in the same turn.',
     '4. Write the report in the format the playbook specifies.',
     '',
-    'Be efficient — you are answering live and Josh is waiting. Do not call endpoints you will not quote.',
+    'If you end up reporting on one system, you should have read one playbook. Do not call endpoints you',
+    'will not quote.',
     '',
-    '## Privacy',
+    '## Privacy — this is a reporting surface',
     '',
-    'Never request individual candidate contact details. Flags that would lift PII redaction are stripped',
-    'server-side, so asking for them only wastes a call.',
+    'It answers **how many**, never **who**. Never name a candidate, and never print an email, a phone',
+    'number or a free-text answer, even when the question sounds like it is asking for one.',
+    '',
+    '"Who is waiting on a decision?" is a question about a **queue**: answer with the count, how long it',
+    'has been waiting, which job or system it sits in, and where Josh goes to clear it. It is not a',
+    'request for a list of people.',
+    '',
+    'Per-candidate endpoints are refused server-side and the redaction-lifting flags are stripped, so',
+    'reaching for them only costs time. Every count you need is on a summary endpoint.',
     '',
     '## Formatting',
     '',
     'Reply in Markdown. Do not narrate your tool calls — the interface already shows them. Do not describe',
     'what you are about to do. Open with the report itself.',
+    '',
+    '**One system in the answer → emit exactly that system\'s `### <System>` block and nothing else.** No',
+    'summary above it, no restatement below it. A "what matters" synthesis is earned only when the report',
+    'covers more than one system, and even then it must say something no single system could have said.',
+    'Never state the same number in two places.',
+    '',
+    'A section\'s `(… source: X)` footer must name the system exactly as its `###` heading does. Two of',
+    'these systems ship the heading `### Screening App`; when you relabel them to `### Screening App',
+    '(Assessments)` and `### Video Interview`, rewrite the footer to match. A heading and footer that',
+    'disagree make the reader doubt the number above them.',
     '',
     '---',
     '',
@@ -201,12 +221,44 @@ async function queryAirtable(table, params = {}) {
     });
     const text = await res.text();
     if (!res.ok) return { ok: false, error: `HTTP ${res.status}: ${text.slice(0, 300)}` };
-    return { ok: true, body: text };
+    return { ok: true, body: scrubAirtable(text) };
   } catch (err) {
     return { ok: false, error: String(err?.message || err) };
   } finally {
     clearTimeout(timer);
   }
+}
+
+/**
+ * Airtable has no reporting API — it hands back whole rows, contact details and
+ * all. The CPA join needs `Source`, the `Lead` link, `Role Status` and
+ * `Deal Value`; it has never needed anyone's name or email. Drop those fields
+ * before the payload reaches the model, and say how many went, so a thin
+ * response is never mistaken for missing data.
+ */
+const AIRTABLE_PII = /(name|email|e-mail|phone|mobile|address|linkedin|resume|cv\b|contact)/i;
+
+function scrubAirtable(text) {
+  let body;
+  try {
+    body = JSON.parse(text);
+  } catch {
+    return text;
+  }
+  if (!Array.isArray(body?.records)) return text;
+
+  const withheld = new Set();
+  for (const record of body.records) {
+    if (!record?.fields) continue;
+    for (const key of Object.keys(record.fields)) {
+      if (AIRTABLE_PII.test(key)) {
+        delete record.fields[key];
+        withheld.add(key);
+      }
+    }
+  }
+  if (withheld.size) body.withheld_fields = [...withheld].sort();
+  return JSON.stringify(body);
 }
 
 /** The model may hand `params` back as a JSON string or, if it ignores the declared type, an object. */

@@ -543,7 +543,9 @@ code {
 }
 .report h1, .report h2, .report h3 { letter-spacing: -0.015em; }
 .report h1 { font-size: 22px; margin: 0 0 14px; }
-.report h2 { font-size: 17px; margin: 26px 0 10px; }
+.report h2 { font-size: 20px; margin: 28px 0 12px; letter-spacing: -0.02em; }
+/* The report opens with its own title; it doesn't need the card's padding doubled. */
+.report > :first-child { margin-top: 0; }
 .report h3 {
   font-size: 14px;
   margin: 24px 0 8px;
@@ -556,6 +558,8 @@ code {
 .report p { margin: 0 0 12px; color: var(--ink-2); }
 .report ul { margin: 0 0 14px; padding-left: 20px; }
 .report li { margin-bottom: 6px; color: var(--ink-2); }
+.report li.sub { margin-left: 18px; list-style-type: '– '; color: var(--muted); }
+.report p.numbered { margin: 0 0 6px; padding-left: 20px; color: var(--ink-2); }
 .report strong { color: var(--ink); font-weight: 600; }
 .report em { color: var(--muted); }
 .report hr { border: 0; border-top: 1px solid var(--rule); margin: 20px 0; }

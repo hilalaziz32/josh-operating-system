@@ -175,7 +175,7 @@ Then put a synthesis on top. The whole report:
 ```
 ## The Coordinators — <window> report
 
-**What matters this week**
+**What matters**
 - <cross-system insight>
 - <cross-system insight>
 - <cross-system insight>
@@ -197,7 +197,10 @@ The trailing "Not available this run" line appears only when at least one system
 `- data unavailable`. Those systems still get their block in the body (heading + the one line) — the
 footer line is so Josh can see at a glance that a gap is a gap, not a zero.
 
-### Writing "what matters this week"
+### Writing "what matters"
+
+The heading is **"What matters"**, not "what matters this week" — the window is whatever Josh asked
+for, and a month's report saying "this week" is wrong on its face.
 
 Three to five bullets. This is the only part of the report Josh is guaranteed to read, so it earns
 its place by saying something **no single system could have told him**.
