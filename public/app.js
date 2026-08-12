@@ -491,6 +491,7 @@ async function runAsk(question) {
     const decoder = new TextDecoder();
     const pending = new Map();
     let buffer = '';
+    let truncated = null;
 
     while (true) {
       const { done, value } = await reader.read();
@@ -525,6 +526,8 @@ async function runAsk(question) {
           }
         } else if (event.type === 'notice') {
           pushActivity(event.text, 'unconfigured');
+        } else if (event.type === 'done') {
+          truncated = event.finishReason && event.finishReason !== 'STOP' ? event.finishReason : null;
         } else if (event.type === 'error') {
           throw new Error(event.message);
         }
@@ -532,6 +535,14 @@ async function runAsk(question) {
     }
 
     paintReport(true);
+    if (truncated) {
+      $('#ask-report').insertAdjacentHTML(
+        'beforeend',
+        `<div class="callout callout-warn"><strong>This report stopped early.</strong><span>The model finished with <code>${esc(
+          truncated
+        )}</code>, so what's above may be incomplete. Try a narrower question or a single system.</span></div>`
+      );
+    }
     if (state.reportText.trim()) {
       $('#ask-footer').hidden = false;
       $('#ask-meta').textContent = `${Math.round((Date.now() - started) / 1000)}s`;

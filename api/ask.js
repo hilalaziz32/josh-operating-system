@@ -26,6 +26,10 @@ const MAX_TURNS = 12;      // tool round-trips before we stop and report what we
 const MAX_TOOL_CALLS = 40; // hard ceiling across the whole run
 const MAX_RESULT_CHARS = 24000;
 
+// SSE line endings, which Gemini sends as CRLF.
+const NEWLINE = /\r?\n/;
+const FRAME_BOUNDARY = /\r?\n\r?\n/;
+
 // ---------------------------------------------------------------- playbook ---
 
 const roots = [process.cwd(), path.join(process.cwd(), '..'), '/var/task'];
@@ -272,6 +276,29 @@ async function runTool(name, args = {}) {
 // ------------------------------------------------------------- model stream ---
 
 /**
+ * Collapse the parts a turn produced into what gets appended to `contents`.
+ *
+ * Parts are kept **verbatim**, because Gemini 3 attaches a `thoughtSignature` —
+ * an encrypted handle on its reasoning — and the API is stateless, so anything
+ * we drop here the model cannot recover on the next turn. Only adjacent plain
+ * text is merged, and only when neither side carries a signature.
+ */
+function packParts(received) {
+  const isPlain = (p) =>
+    p && typeof p.text === 'string' && !p.thought && !p.thoughtSignature && !p.functionCall;
+
+  const out = [];
+  for (const part of received) {
+    const prev = out[out.length - 1];
+    if (isPlain(part) && isPlain(prev)) prev.text += part.text;
+    else out.push({ ...part });
+  }
+
+  // An empty trailing text part rides along with finishReason; it carries nothing.
+  return out.filter((p) => p.functionCall || p.thoughtSignature || p.thought || p.text);
+}
+
+/**
  * One streamed turn against `:streamGenerateContent?alt=sse`.
  *
  * Text arrives incrementally and is pushed through `onText`; function calls
@@ -303,11 +330,42 @@ async function streamTurn(contents, systemInstruction, onText) {
     throw new Error(`Gemini API ${res.status}: ${message}`);
   }
 
-  let text = '';
+  const received = [];
   const calls = [];
   let finishReason = null;
   let blockReason = null;
   let buffer = '';
+
+  const handleFrame = (frame) => {
+    // SSE permits a field to span several `data:` lines; join them.
+    const payload = frame
+      .split(NEWLINE)
+      .filter((l) => l.startsWith('data:'))
+      .map((l) => l.slice(5).trim())
+      .join('');
+    if (!payload || payload === '[DONE]') return;
+
+    let chunk;
+    try {
+      chunk = JSON.parse(payload);
+    } catch {
+      return;
+    }
+
+    if (chunk.error) throw new Error(chunk.error.message || 'stream error');
+    blockReason = chunk.promptFeedback?.blockReason ?? blockReason;
+
+    const candidate = chunk.candidates?.[0];
+    if (!candidate) return;
+    finishReason = candidate.finishReason ?? finishReason;
+
+    for (const part of candidate.content?.parts || []) {
+      received.push(part);
+      if (part.functionCall) calls.push(part.functionCall);
+      // `thought` parts are the model's own reasoning summary, not the report.
+      else if (typeof part.text === 'string' && part.text && !part.thought) onText(part.text);
+    }
+  };
 
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
@@ -317,47 +375,24 @@ async function streamTurn(contents, systemInstruction, onText) {
     if (done) break;
     buffer += decoder.decode(value, { stream: true });
 
-    // SSE frames are separated by a blank line.
-    let split;
-    while ((split = buffer.indexOf('\n\n')) !== -1) {
-      const frame = buffer.slice(0, split);
-      buffer = buffer.slice(split + 2);
-
-      const line = frame.split('\n').find((l) => l.startsWith('data:'));
-      if (!line) continue;
-
-      let chunk;
-      try {
-        chunk = JSON.parse(line.slice(5).trim());
-      } catch {
-        continue;
-      }
-
-      if (chunk.error) throw new Error(chunk.error.message || 'stream error');
-      blockReason = chunk.promptFeedback?.blockReason ?? blockReason;
-
-      const candidate = chunk.candidates?.[0];
-      if (!candidate) continue;
-      finishReason = candidate.finishReason ?? finishReason;
-
-      for (const part of candidate.content?.parts || []) {
-        if (typeof part.text === 'string' && part.text) {
-          text += part.text;
-          onText(part.text);
-        }
-        if (part.functionCall) calls.push(part.functionCall);
-      }
+    // Gemini delimits frames with CRLFCRLF, so matching on "\n\n" alone finds
+    // nothing and the entire response backs up in the buffer. Match both, and
+    // only on a complete boundary — a chunk that ends mid-CRLF waits for more.
+    let match;
+    while ((match = FRAME_BOUNDARY.exec(buffer))) {
+      handleFrame(buffer.slice(0, match.index));
+      buffer = buffer.slice(match.index + match[0].length);
     }
   }
 
+  // The last frame is not always followed by a blank line, so flush whatever
+  // is left rather than dropping it.
+  buffer += decoder.decode();
+  if (buffer.trim()) handleFrame(buffer);
+
   if (blockReason) throw new Error(`Gemini blocked the request: ${blockReason}`);
 
-  // Rebuild the model turn so the next request carries its own context.
-  const parts = [];
-  if (text) parts.push({ text });
-  for (const call of calls) parts.push({ functionCall: call });
-
-  return { parts, calls, finishReason };
+  return { parts: packParts(received), calls, finishReason };
 }
 
 // ------------------------------------------------------------------- route ---
@@ -412,11 +447,15 @@ export default async function handler(req, res) {
     const contents = [{ role: 'user', parts: [{ text: prompt }] }];
 
     let toolCalls = 0;
+    let lastFinish = null;
 
     for (let turn = 0; turn < MAX_TURNS; turn++) {
       if (closed) return;
 
-      const { parts, calls } = await streamTurn(contents, instruction, (text) => send({ type: 'text', text }));
+      const { parts, calls, finishReason } = await streamTurn(contents, instruction, (text) =>
+        send({ type: 'text', text })
+      );
+      lastFinish = finishReason;
 
       // An empty turn has nothing to append and nothing to act on.
       if (!parts.length) break;
@@ -458,7 +497,9 @@ export default async function handler(req, res) {
       contents.push({ role: 'user', parts: responses });
     }
 
-    send({ type: 'done' });
+    // A report that stopped short is worth saying out loud — a half-report that
+    // looks whole is worse than an error.
+    send({ type: 'done', finishReason: lastFinish });
   } catch (err) {
     send({ type: 'error', message: String(err?.message || err) });
   } finally {
