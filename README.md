@@ -99,6 +99,13 @@ last 7 days.
 If a system is down or unconfigured, its section reads `- data unavailable` and the rest of the
 report ships anyway. A gap is never allowed to take down the report.
 
+## Full documentation
+
+[docs/Control-Room-Documentation.docx](docs/) — 20 pages covering how to use the app, what each
+system holds, how it works, deploying it, maintaining it, and what has been verified. It is
+generated from [docs/build_docs.py](docs/build_docs.py), so edit the script rather than the
+document.
+
 ## MEMORY.md
 
 [MEMORY.md](MEMORY.md) is the repo's accumulated knowledge: what each field actually means, which
